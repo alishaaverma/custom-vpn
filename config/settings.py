@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -58,9 +59,9 @@ def _load_json(path: str) -> dict[str, Any]:
 def load_server_settings(path: str) -> ServerSettings:
     data = _load_json(path)
     return ServerSettings(
-        host=str(data.get("host", "0.0.0.0")),
-        port=validate_port(data.get("port", 9443)),
-        credentials_file=str(data["credentials_file"]),
+        host=os.getenv("VPN_SERVER_HOST", str(data.get("host", "0.0.0.0"))),
+        port=validate_port(os.getenv("VPN_SERVER_PORT", data.get("port", 9443))),
+        credentials_file=os.getenv("VPN_CREDENTIALS_FILE", str(data["credentials_file"])),
         pending_timeout_seconds=max(3, int(data.get("pending_timeout_seconds", 15))),
         log_level=str(data.get("log_level", "INFO")),
         log_file=data.get("log_file"),
@@ -89,7 +90,7 @@ def load_client_settings(path: str) -> ClientSettings:
             )
         )
 
-    psk_hex = str(data["psk_hex"]).strip().lower()
+    psk_hex = os.getenv("VPN_CLIENT_PSK_HEX", str(data["psk_hex"])).strip().lower()
     try:
         psk = bytes.fromhex(psk_hex)
     except ValueError as exc:
@@ -98,9 +99,9 @@ def load_client_settings(path: str) -> ClientSettings:
         raise ConfigurationError("PSK must be at least 32 bytes / 256 bits")
 
     return ClientSettings(
-        server_host=str(data["server_host"]),
-        server_port=validate_port(data.get("server_port", 9443)),
-        identity=str(data["identity"]),
+        server_host=os.getenv("VPN_CLIENT_SERVER_HOST", str(data["server_host"])),
+        server_port=validate_port(os.getenv("VPN_CLIENT_SERVER_PORT", data.get("server_port", 9443))),
+        identity=os.getenv("VPN_CLIENT_IDENTITY", str(data["identity"])),
         psk_hex=psk_hex,
         published_services=services,
         forwards=forwards,
