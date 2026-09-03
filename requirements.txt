@@ -1,0 +1,2 @@
+# No pip dependencies.
+# Requires Python 3.13+ and ssl.HAS_PSK == True.

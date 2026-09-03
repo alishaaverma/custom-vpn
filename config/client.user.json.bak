@@ -1,0 +1,21 @@
+ source /home/alishaverma/custom_vpn/custom_python_overlay_vpn/.venv/bin/activate
+{
+     "server_host": "127.0.0.1",
+     "server_port": 9443,
+     "identity": "user",
+     "psk_hex": "acca35b7ea9c590c4eaa26bb9587ff598c4b0003b4a3a3839415b2c73e2c4062",
+     "published_services": [],
+     "forwards": [
+       {
+         "listen_host": "127.0.0.1",
+         "listen_port": 18080,
+         "target_virtual_ip": "10.77.0.14",
+         "target_port": 8080
+       }
+     ],
+     "heartbeat_seconds": 20,
+     "reconnect_seconds": 3,
+     "log_level": "INFO",
+     "log_file": "logs/user.log"
+   }
+   

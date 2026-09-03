@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+logs/*.log
+credentials/users.json
+config/client.*.json
+!config/client.*.example.json
+.env

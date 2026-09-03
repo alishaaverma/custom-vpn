@@ -1,0 +1,19 @@
+{
+  "server_host": "192.168.1.182",
+  "server_port": 9443,
+  "identity": "user",
+  "psk_hex": "REPLACE_WITH_USER_64_HEX_CHARS",
+  "published_services": [],
+  "forwards": [
+    {
+      "listen_host": "127.0.0.1",
+      "listen_port": 18080,
+      "target_virtual_ip": "10.77.0.14",
+      "target_port": 8080
+    }
+  ],
+  "heartbeat_seconds": 20,
+  "reconnect_seconds": 3,
+  "log_level": "INFO",
+  "log_file": "logs/user.log"
+}
