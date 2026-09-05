@@ -5,3 +5,5 @@ credentials/users.json
 config/client.*.json
 !config/client.*.example.json
 .env
+certs/*.crt
+certs/*.key

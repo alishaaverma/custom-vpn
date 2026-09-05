@@ -14,6 +14,7 @@ class UserRecord:
     psk: bytes
     virtual_ip: str
     allowed_ports: frozenset[int]
+    allow_egress: bool = False
     enabled: bool = True
 
 
@@ -56,6 +57,7 @@ class CredentialStore:
                 psk=psk,
                 virtual_ip=vip,
                 allowed_ports=ports,
+                allow_egress=bool(item.get("allow_egress", False)),
                 enabled=bool(item.get("enabled", True)),
             )
         return users

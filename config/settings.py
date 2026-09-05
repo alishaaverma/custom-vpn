@@ -15,6 +15,8 @@ class ServerSettings:
     host: str
     port: int
     credentials_file: str
+    tls_cert_file: str = "certs/server.crt"
+    tls_key_file: str = "certs/server.key"
     pending_timeout_seconds: int = 15
     log_level: str = "INFO"
     log_file: str | None = None
@@ -36,13 +38,21 @@ class LocalForward:
 
 
 @dataclass(frozen=True)
+class Socks5Listener:
+    listen_host: str
+    listen_port: int
+
+
+@dataclass(frozen=True)
 class ClientSettings:
     server_host: str
     server_port: int
     identity: str
     psk_hex: str
+    tls_ca_file: str = "certs/server.crt"
     published_services: dict[int, PublishedService] = field(default_factory=dict)
     forwards: list[LocalForward] = field(default_factory=list)
+    socks5: Socks5Listener | None = None
     heartbeat_seconds: int = 20
     reconnect_seconds: int = 3
     log_level: str = "INFO"
@@ -62,6 +72,8 @@ def load_server_settings(path: str) -> ServerSettings:
         host=os.getenv("VPN_SERVER_HOST", str(data.get("host", "0.0.0.0"))),
         port=validate_port(os.getenv("VPN_SERVER_PORT", data.get("port", 9443))),
         credentials_file=os.getenv("VPN_CREDENTIALS_FILE", str(data["credentials_file"])),
+        tls_cert_file=os.getenv("VPN_TLS_CERT_FILE", str(data.get("tls_cert_file", "certs/server.crt"))),
+        tls_key_file=os.getenv("VPN_TLS_KEY_FILE", str(data.get("tls_key_file", "certs/server.key"))),
         pending_timeout_seconds=max(3, int(data.get("pending_timeout_seconds", 15))),
         log_level=str(data.get("log_level", "INFO")),
         log_file=data.get("log_file"),
@@ -90,6 +102,16 @@ def load_client_settings(path: str) -> ClientSettings:
             )
         )
 
+    socks5: Socks5Listener | None = None
+    socks5_data = data.get("socks5")
+    if socks5_data is not None:
+        if not isinstance(socks5_data, dict):
+            raise ConfigurationError("socks5 must be an object")
+        socks5 = Socks5Listener(
+            listen_host=str(socks5_data.get("listen_host", "127.0.0.1")),
+            listen_port=validate_port(socks5_data["listen_port"]),
+        )
+
     psk_hex = os.getenv("VPN_CLIENT_PSK_HEX", str(data["psk_hex"])).strip().lower()
     try:
         psk = bytes.fromhex(psk_hex)
@@ -103,8 +125,10 @@ def load_client_settings(path: str) -> ClientSettings:
         server_port=validate_port(os.getenv("VPN_CLIENT_SERVER_PORT", data.get("server_port", 9443))),
         identity=os.getenv("VPN_CLIENT_IDENTITY", str(data["identity"])),
         psk_hex=psk_hex,
+        tls_ca_file=os.getenv("VPN_TLS_CA_FILE", str(data.get("tls_ca_file", "certs/server.crt"))),
         published_services=services,
         forwards=forwards,
+        socks5=socks5,
         heartbeat_seconds=max(5, int(data.get("heartbeat_seconds", 20))),
         reconnect_seconds=max(1, int(data.get("reconnect_seconds", 3))),
         log_level=str(data.get("log_level", "INFO")),

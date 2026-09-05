@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import ipaddress
 import secrets
 import socket
 import ssl
@@ -9,7 +10,7 @@ import threading
 from config.settings import ServerSettings
 from credentials.store import CredentialStore, UserRecord
 from errors.exceptions import AuthorizationError, ProtocolError
-from messages.constants import ACCEPT, ERROR, INCOMING, OPEN, PING, PONG, READY, REGISTER_CONTROL, REGISTERED, WAIT
+from messages.constants import ACCEPT, EGRESS_OPEN, ERROR, INCOMING, OPEN, PING, PONG, READY, REGISTER_CONTROL, REGISTERED, WAIT
 from network.auth import server_authenticate
 from network.protocol import recv_json, send_json
 from network.relay import relay_bidirectional
@@ -22,7 +23,7 @@ class VPNServer:
         self.settings = settings
         self.store = CredentialStore(settings.credentials_file)
         self.registry = SessionRegistry()
-        self.context = make_server_context(self.store)
+        self.context = make_server_context(self.store, settings.tls_cert_file, settings.tls_key_file)
         self.log = logging.getLogger("vpn")
         self._stop = threading.Event()
 
@@ -62,6 +63,8 @@ class VPNServer:
                 transferred = self._handle_control(tls, user)
             elif msg_type == OPEN:
                 transferred = self._handle_open(tls, user, first)
+            elif msg_type == EGRESS_OPEN:
+                transferred = self._handle_egress_open(tls, user, first)
             elif msg_type == ACCEPT:
                 transferred = self._handle_accept(tls, user, first)
             else:
@@ -191,4 +194,61 @@ class VPNServer:
 
         pending.target_sock = sock
         pending.event.set()
+        return True
+
+    def _handle_egress_open(self, sock: socket.socket, user: UserRecord, message: dict) -> bool:
+        if not user.allow_egress:
+            raise AuthorizationError("Internet egress is not enabled for this identity")
+
+        host = str(message.get("host", "")).strip()
+        try:
+            port = int(message.get("port", 0))
+        except (TypeError, ValueError) as exc:
+            raise ProtocolError("Invalid egress port") from exc
+        if not host or len(host) > 253 or any(ord(char) < 33 for char in host):
+            raise ProtocolError("Invalid egress host")
+        if not 1 <= port <= 65535:
+            raise ProtocolError("Invalid egress port")
+
+        destination: socket.socket | None = None
+        try:
+            addresses = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+            public_addresses = []
+            for family, socktype, protocol, _, sockaddr in addresses:
+                try:
+                    if ipaddress.ip_address(sockaddr[0]).is_global:
+                        public_addresses.append((family, socktype, protocol, sockaddr))
+                except ValueError:
+                    continue
+            if not public_addresses:
+                raise AuthorizationError("Egress destinations must resolve to a public IP address")
+
+            last_error: OSError | None = None
+            for family, socktype, protocol, sockaddr in public_addresses:
+                try:
+                    destination = socket.socket(family, socktype, protocol)
+                    destination.settimeout(15)
+                    destination.connect(sockaddr)
+                    break
+                except OSError as exc:
+                    last_error = exc
+                    if destination:
+                        destination.close()
+                    destination = None
+            if destination is None:
+                raise ConnectionError(f"Could not connect to egress destination: {last_error}")
+            destination.settimeout(None)
+            send_json(sock, {"type": READY})
+            self.log.info("Egress relay: %s -> %s:%s", user.identity, host, port)
+            relay_bidirectional(sock, destination)
+        finally:
+            if destination:
+                try:
+                    destination.close()
+                except OSError:
+                    pass
+            try:
+                sock.close()
+            except OSError:
+                pass
         return True
