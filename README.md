@@ -134,6 +134,22 @@ curl http://127.0.0.1:18080
 
 ## SOCKS5 egress setup
 
+### Two remote users, one shared public IP
+
+Two users can connect from different home networks to the same relay server. Give them
+different `identity`, `psk_hex`, and `virtual_ip` values, but enable `allow_egress` for
+both. When both clients use their local SOCKS5 listeners, the external dashboard or project
+sees the relay server's one public IP for both users. It does **not** see either user's home
+network IP. The relay must therefore have a stable public IP that is reachable by both users.
+
+```text
+User 1 home network -- TLS --> shared relay public IP --> dashboard/project
+User 2 home network -- TLS --> shared relay public IP --> dashboard/project
+```
+
+The logical overlay IPs must remain unique; do not give both users the same `virtual_ip`.
+The shared address is the relay's public egress IP.
+
 Enable egress only for identities that need it in `credentials/users.json`:
 
 ```json
@@ -225,7 +241,9 @@ The returned address should be the relay server's public IP. `socks5h` sends the
 
 ### Environment overrides
 
-`main.py` loads `.env` before parsing commands. These environment variables override JSON values: `VPN_SERVER_CONFIG`, `VPN_CLIENT_CONFIG`, `VPN_SERVER_HOST`, `VPN_SERVER_PORT`, `VPN_CREDENTIALS_FILE`, `VPN_TLS_CERT_FILE`, `VPN_TLS_KEY_FILE`, `VPN_CLIENT_SERVER_HOST`, `VPN_CLIENT_SERVER_PORT`, `VPN_CLIENT_IDENTITY`, `VPN_CLIENT_PSK_HEX`, and `VPN_TLS_CA_FILE`.
+`main.py` loads `.env` before parsing commands. When no `--config` flag is supplied, these environment variables can override JSON values: `VPN_SERVER_CONFIG`, `VPN_CLIENT_CONFIG`, `VPN_SERVER_HOST`, `VPN_SERVER_PORT`, `VPN_CREDENTIALS_FILE`, `VPN_TLS_CERT_FILE`, `VPN_TLS_KEY_FILE`, `VPN_CLIENT_SERVER_HOST`, `VPN_CLIENT_SERVER_PORT`, `VPN_CLIENT_IDENTITY`, `VPN_CLIENT_PSK_HEX`, and `VPN_TLS_CA_FILE`.
+
+When an explicit `--config` is supplied, its JSON values are used and client/server environment overrides are ignored. This lets owner and user configs run correctly on the same computer without one `.env` identity overriding the other.
 
 Use `.env.example` as a template, but replace all placeholder values. Environment values take precedence over JSON config values.
 

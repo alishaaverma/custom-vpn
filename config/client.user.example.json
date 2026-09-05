@@ -1,18 +1,11 @@
 {
-  "server_host": "192.168.1.182",
+  "server_host": "127.0.0.1",
   "server_port": 9443,
   "identity": "user",
   "psk_hex": "acca35b7ea9c590c4eaa26bb9587ff598c4b0003b4a3a3839415b2c73e2c4062",
   "tls_ca_file": "certs/server.crt",
   "published_services": [],
-  "forwards": [
-    {
-      "listen_host": "127.0.0.1",
-      "listen_port": 18080,
-      "target_virtual_ip": "10.77.0.14",
-      "target_port": 8080
-    }
-  ],
+  "forwards": [],
   "socks5": {
     "listen_host": "127.0.0.1",
     "listen_port": 1080

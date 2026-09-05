@@ -66,21 +66,25 @@ def _load_json(path: str) -> dict[str, Any]:
         raise ConfigurationError(f"Could not read JSON config {path}: {exc}") from exc
 
 
-def load_server_settings(path: str) -> ServerSettings:
+def _setting_from_env(name: str, value: Any, use_environment: bool) -> Any:
+    return os.getenv(name, value) if use_environment else value
+
+
+def load_server_settings(path: str, use_environment: bool = True) -> ServerSettings:
     data = _load_json(path)
     return ServerSettings(
-        host=os.getenv("VPN_SERVER_HOST", str(data.get("host", "0.0.0.0"))),
-        port=validate_port(os.getenv("VPN_SERVER_PORT", data.get("port", 9443))),
-        credentials_file=os.getenv("VPN_CREDENTIALS_FILE", str(data["credentials_file"])),
-        tls_cert_file=os.getenv("VPN_TLS_CERT_FILE", str(data.get("tls_cert_file", "certs/server.crt"))),
-        tls_key_file=os.getenv("VPN_TLS_KEY_FILE", str(data.get("tls_key_file", "certs/server.key"))),
+        host=_setting_from_env("VPN_SERVER_HOST", str(data.get("host", "0.0.0.0")), use_environment),
+        port=validate_port(_setting_from_env("VPN_SERVER_PORT", data.get("port", 9443), use_environment)),
+        credentials_file=_setting_from_env("VPN_CREDENTIALS_FILE", str(data["credentials_file"]), use_environment),
+        tls_cert_file=_setting_from_env("VPN_TLS_CERT_FILE", str(data.get("tls_cert_file", "certs/server.crt")), use_environment),
+        tls_key_file=_setting_from_env("VPN_TLS_KEY_FILE", str(data.get("tls_key_file", "certs/server.key")), use_environment),
         pending_timeout_seconds=max(3, int(data.get("pending_timeout_seconds", 15))),
         log_level=str(data.get("log_level", "INFO")),
         log_file=data.get("log_file"),
     )
 
 
-def load_client_settings(path: str) -> ClientSettings:
+def load_client_settings(path: str, use_environment: bool = True) -> ClientSettings:
     data = _load_json(path)
     services: dict[int, PublishedService] = {}
     for item in data.get("published_services", []):
@@ -112,7 +116,7 @@ def load_client_settings(path: str) -> ClientSettings:
             listen_port=validate_port(socks5_data["listen_port"]),
         )
 
-    psk_hex = os.getenv("VPN_CLIENT_PSK_HEX", str(data["psk_hex"])).strip().lower()
+    psk_hex = str(_setting_from_env("VPN_CLIENT_PSK_HEX", str(data["psk_hex"]), use_environment)).strip().lower()
     try:
         psk = bytes.fromhex(psk_hex)
     except ValueError as exc:
@@ -121,11 +125,11 @@ def load_client_settings(path: str) -> ClientSettings:
         raise ConfigurationError("PSK must be at least 32 bytes / 256 bits")
 
     return ClientSettings(
-        server_host=os.getenv("VPN_CLIENT_SERVER_HOST", str(data["server_host"])),
-        server_port=validate_port(os.getenv("VPN_CLIENT_SERVER_PORT", data.get("server_port", 9443))),
-        identity=os.getenv("VPN_CLIENT_IDENTITY", str(data["identity"])),
+        server_host=_setting_from_env("VPN_CLIENT_SERVER_HOST", str(data["server_host"]), use_environment),
+        server_port=validate_port(_setting_from_env("VPN_CLIENT_SERVER_PORT", data.get("server_port", 9443), use_environment)),
+        identity=_setting_from_env("VPN_CLIENT_IDENTITY", str(data["identity"]), use_environment),
         psk_hex=psk_hex,
-        tls_ca_file=os.getenv("VPN_TLS_CA_FILE", str(data.get("tls_ca_file", "certs/server.crt"))),
+        tls_ca_file=_setting_from_env("VPN_TLS_CA_FILE", str(data.get("tls_ca_file", "certs/server.crt")), use_environment),
         published_services=services,
         forwards=forwards,
         socks5=socks5,

@@ -1,2 +1,5 @@
-# No pip dependencies.
-# Requires Python 3.10+ and a server TLS certificate.
+No third-party Python packages are required.
+Runtime requirements (not installable through pip):
+- Python >= 3.10
+- OpenSSL command-line utility (used once to generate the relay certificate)
+- A server TLS certificate and private key; see README.md

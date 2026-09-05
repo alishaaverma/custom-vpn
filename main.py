@@ -37,10 +37,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_server = sub.add_parser("server", help="Run the central overlay server")
-    p_server.add_argument("--config", default=os.getenv("VPN_SERVER_CONFIG", "config/server.example.json"))
+    p_server.add_argument("--config")
 
     p_client = sub.add_parser("client", help="Run a client agent and configured local forwards")
-    p_client.add_argument("--config", default=os.getenv("VPN_CLIENT_CONFIG", "config/client.user.example.json"))
+    p_client.add_argument("--config")
 
     sub.add_parser("gen-psk", help="Generate a 256-bit PSK as hex")
     sub.add_parser("check", help="Check Python/OpenSSL runtime support")
@@ -64,13 +64,17 @@ def main() -> None:
     require_supported_runtime()
 
     if args.command == "server":
-        settings = load_server_settings(args.config)
+        explicit_config = args.config is not None
+        config_path = args.config or os.getenv("VPN_SERVER_CONFIG", "config/server.example.json")
+        settings = load_server_settings(config_path, use_environment=not explicit_config)
         setup_logging(settings.log_level, settings.log_file)
         VPNServer(settings).serve_forever()
         return
 
     if args.command == "client":
-        settings = load_client_settings(args.config)
+        explicit_config = args.config is not None
+        config_path = args.config or os.getenv("VPN_CLIENT_CONFIG", "config/client.user.example.json")
+        settings = load_client_settings(config_path, use_environment=not explicit_config)
         setup_logging(settings.log_level, settings.log_file)
         VPNClient(settings).run_forever()
         return

@@ -1,5 +1,5 @@
 {
-  "server_host": "192.168.1.182",
+  "server_host": "127.0.0.1",
   "server_port": 9443,
   "identity": "owner",
   "psk_hex": "2ba4014a9501c0c20d09c53494b3657872d11114c4d9e6d6ae7256b91a0ba3e3",
@@ -12,6 +12,10 @@
     }
   ],
   "forwards": [],
+  "socks5": {
+    "listen_host": "127.0.0.1",
+    "listen_port": 1080
+  },
   "heartbeat_seconds": 20,
   "reconnect_seconds": 3,
   "log_level": "INFO",
